@@ -1,0 +1,85 @@
+===============================================================================
+                  PINEAPPLES OS - DEVELOPER DOCUMENTATION
+===============================================================================
+
+APPLICATION DEVELOPMENT GUIDE FOR PINEAPPLES OS
+
+This document outlines the standard structure and requirements for building 
+and packaging compatible applications for the Pineapples OS application 
+downloader ecosystem. Adhering to this structural template ensures proper 
+system initialization and runtime execution.
+
+-------------------------------------------------------------------------------
+1. DIRECTORY STRUCTURE OVERVIEW
+-------------------------------------------------------------------------------
+
+Every application must reside within its own dedicated root folder. The system 
+requires specific file naming conventions and assets to recognize and execute 
+the module correctly.
+
+Your application directory must be structured as follows:
+
+[your-app-folder]/
+├── manifest.json       <-- System registration data (Crucial)
+├── script.html         <-- Application source code and layout (Crucial)
+├── icon.png            <-- Interface icon displayed in the App Downloader
+└── assets/             <-- Directory for auxiliary application media (Crucial)
+    ├── (images)
+    ├── (audio)
+    └── (other local files)
+
+-------------------------------------------------------------------------------
+2. COMPONENT CONFIGURATION
+-------------------------------------------------------------------------------
+
+* MANIFEST.JSON (CRUCIAL)
+  The manifest file registers your application within the Pineapples OS environment. 
+  It provides metadata to the downloader client using a strict JSON format.
+
+  Template:
+  {
+    "name": "Application Name",
+    "description": "A clear, concise summary of what your application does.",
+    "author": "Your Developer Name"
+  }
+
+* SCRIPT.HTML (CRUCIAL)
+  This file functions as the core application engine. It contains the HTML, CSS, 
+  and JavaScript executing inside the environment player module.
+
+  Reference Implementation Example:
+  -------------------------------------------------------------------------
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <title>Pineapples OS App Template</title>
+      <style>
+          body {
+              font-family: sans-serif;
+              background-color: #f0f0f0;
+              text-align: center;
+              padding: 20px;
+          }
+      </style>
+  </head>
+  <body>
+      <h1>Application Initialized Successfully</h1>
+      <p>Welcome to your custom Pineapples OS application extension.</p>
+  </body>
+  </html>
+  -------------------------------------------------------------------------
+
+* ICON.PNG
+  The visual identifier for your application. This image asset is automatically 
+  scanned by the App Downloader storefront view and serves as the launch button 
+  once deployment is complete.
+
+* ASSETS/ FOLDER (CRUCIAL)
+  A dedicated storage directory for external assets. Any structural resources, 
+  images, sound files, or stylesheets used inside your `script.html` file should 
+  be placed here and referenced locally.
+
+===============================================================================
+                       END OF DOCUMENT - PINEAPPLES OS
+===============================================================================
