@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pine Browser</title>
+  <style>
+    :root {
+      --bg-primary: #1c1b22;
+      --bg-secondary: #2b2a33;
+      --bg-tertiary: #42414d;
+      --text-main: #fbfbfe;
+      --text-muted: #8f8f9d;
+      --accent-color: #fca311;
+      --accent-hover: #e08e00;
+      --border-color: #52525e;
+      --tab-active: #42414d;
+      --tab-inactive: #2b2a33;
+      --toolbar-bg: #2b2a33;
+      --address-bg: #1c1b22;
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f0f0f4;
+      --bg-secondary: #e0e0e6;
+      --bg-tertiary: #ffffff;
+      --text-main: #15141a;
+      --text-muted: #5b5b66;
+      --accent-color: #fca311;
+      --accent-hover: #d98800;
+      --border-color: #ccccd6;
+      --tab-active: #ffffff;
+      --tab-inactive: #e0e0e6;
+      --toolbar-bg: #e0e0e6;
+      --address-bg: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-primary); color: var(--text-main); }
+
+    .browser-window { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+
+    /* Titlebar & Tabbar */
+    .tab-bar { display: flex; align-items: center; background-color: var(--bg-primary); padding: 6px 8px 0 8px; gap: 6px; user-select: none; border-bottom: 1px solid var(--border-color); }
+    .brand-logo { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-right: 6px; cursor: pointer; }
+    .brand-logo img { width: 22px; height: 22px; object-fit: contain; }
+    .tabs-container { display: flex; align-items: center; flex: 1; overflow-x: auto; gap: 4px; scrollbar-width: none; }
+    .tabs-container::-webkit-scrollbar { display: none; }
+
+    .tab { display: flex; align-items: center; width: 190px; height: 32px; background-color: var(--tab-inactive); border-radius: 8px 8px 0 0; padding: 0 10px; font-size: 12px; cursor: pointer; color: var(--text-muted); border: 1px solid transparent; border-bottom: none; transition: background 0.15s; }
+    .tab.active { background-color: var(--tab-active); color: var(--text-main); border-color: var(--border-color); }
+    .tab-favicon { width: 16px; height: 16px; margin-right: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .tab-favicon img { width: 14px; height: 14px; object-fit: contain; }
+    .tab-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tab-close { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; opacity: 0.6; margin-left: 4px; }
+    .tab-close:hover { opacity: 1; background-color: rgba(255,255,255,0.15); }
+
+    .btn-icon { background: none; border: none; color: var(--text-main); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; fill: currentColor; }
+    .btn-icon:hover { background-color: var(--bg-tertiary); }
+
+    /* Navigation Toolbar */
+    .toolbar { display: flex; align-items: center; background-color: var(--toolbar-bg); padding: 6px 10px; gap: 8px; border-bottom: 1px solid var(--border-color); }
+    .nav-btns { display: flex; gap: 2px; }
+    
+    .address-bar-container { flex: 1; display: flex; align-items: center; background-color: var(--address-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 2px 10px; gap: 6px; transition: border 0.15s; }
+    .address-bar-container:focus-within { border-color: var(--accent-color); }
+    .protocol-badge { font-size: 10px; font-weight: bold; background: var(--accent-color); color: #000; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; }
+    .address-input { flex: 1; background: none; border: none; outline: none; color: var(--text-main); font-size: 13px; }
+
+    /* Main Viewport Area */
+    .viewport { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .tab-view { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: var(--bg-tertiary); }
+    .tab-view.active { display: block; }
+
+    iframe { width: 100%; height: 100%; border: none; background: #fff; }
+
+    /* Built-in Pine UI Pages */
+    .pine-page { padding: 30px; height: 100%; overflow-y: auto; background: var(--bg-primary); color: var(--text-main); }
+    .pine-card { background: var(--bg-secondary); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border-color); }
+    .pine-title { font-size: 24px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    
+    .quick-access-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px; margin-top: 20px; }
+    .quick-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: transform 0.15s, border 0.15s; }
+    .quick-card:hover { transform: translateY(-3px); border-color: var(--accent-color); }
+    .quick-card-icon { width: 36px; height: 36px; margin: 0 auto 8px auto; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; color: #fff; }
+
+    /* Sidebar Drawer */
+    .sidebar-drawer { position: absolute; right: -320px; top: 0; width: 320px; height: 100%; background: var(--bg-secondary); border-left: 1px solid var(--border-color); transition: right 0.25s ease; z-index: 90; padding: 20px; overflow-y: auto; }
+    .sidebar-drawer.open { right: 0; }
+    .sidebar-item { padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+
+<div class="browser-window">
+  <!-- Top Navigation & Tab Bar -->
+  <div class="tab-bar">
+    <div class="brand-logo" title="Pine Engine Core" onclick="navigateTo('pine://newtab')">
+      <img src="https://github.com/PineappleOSHQ/pineappleos-web/blob/main/costume1.png?raw=true" alt="Pineapple Logo">
+    </div>
+
+    <div class="tabs-container" id="tabs-bar"></div>
+
+    <button class="btn-icon" id="add-tab-btn" title="New Tab (Ctrl+T)">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    </button>
+    <button class="btn-icon" id="theme-toggle-btn" title="Toggle Light/Dark Theme">
+      <svg width="14" height="14" viewBox="0 0 24 24" id="theme-svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+    </button>
+  </div>
+
+  <!-- Address Bar & Toolbar -->
+  <div class="toolbar">
+    <div class="nav-btns">
+      <button class="btn-icon" id="back-btn" title="Back">
+        <svg width="14" height="14" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <button class="btn-icon" id="forward-btn" title="Forward">
+        <svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+      </button>
+      <button class="btn-icon" id="reload-btn" title="Reload">
+        <svg width="14" height="14" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+      <button class="btn-icon" id="home-btn" title="Home">
+        <svg width="14" height="14" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      </button>
+    </div>
+
+    <div class="address-bar-container">
+      <span class="protocol-badge" id="protocol-badge">PINE</span>
+      <input type="text" class="address-input" id="address-bar" placeholder="Search with Google or enter URL" />
+      <span id="bookmark-star" style="cursor:pointer; display:flex; align-items:center;" title="Bookmark Page">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      </span>
+    </div>
+
+    <button class="btn-icon" id="sidebar-toggle-btn" title="Bookmarks & History">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
+  </div>
+
+  <!-- Main Viewport Area -->
+  <div class="viewport" id="viewport-container"></div>
+
+  <!-- Sidebar Drawer -->
+  <div class="sidebar-drawer" id="sidebar-drawer">
+    <h3 style="margin-bottom: 10px;">Bookmarks</h3>
+    <div id="bookmarks-list" style="margin-bottom: 20px;"></div>
+    <h3 style="margin-bottom: 10px;">History</h3>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+/**
+ * Pine OS Browser Engine Logic
+ */
+
+let tabs = [];
+let activeTabId = null;
+let bookmarks = [];
+let historyItems = [];
+
+function resolveUrl(input) {
+  let query = input.trim();
+  if (!query) return "pine://newtab";
+  if (query.startsWith("pine://")) return query;
+
+  // Check if search input looks like a direct domain or web address
+  const isUrl = /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/.*)?$/i.test(query);
+
+  if (isUrl) {
+    if (!query.startsWith("http://") && !query.startsWith("https://")) {
+      return "https://" + query;
+    }
+    return query;
+  }
+
+  // Automatic routing for search queries
+  return `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+}
+
+function createTab(url = "pine://newtab") {
+  const tabId = "tab-" + Date.now();
+  const tab = { id: tabId, url: url, title: "New Tab" };
+  tabs.push(tab);
+
+  const tabElem = document.createElement("div");
+  tabElem.className = "tab";
+  tabElem.id = `bar-${tabId}`;
+  tabElem.onclick = (e) => {
+    if (!e.target.classList.contains("tab-close")) switchTab(tabId);
+  };
+  tabElem.innerHTML = `
+    <span class="tab-favicon"><img src="https://github.com/PineappleOSHQ/pineappleos-web/blob/main/costume1.png?raw=true" alt="favicon"></span>
+    <span class="tab-title" id="title-${tabId}">New Tab</span>
+    <span class="tab-close" onclick="closeTab('${tabId}', event)">✕</span>
+  `;
+  document.getElementById("tabs-bar").appendChild(tabElem);
+
+  const viewElem = document.createElement("div");
+  viewElem.className = "tab-view";
+  viewElem.id = `view-${tabId}`;
+  document.getElementById("viewport-container").appendChild(viewElem);
+
+  switchTab(tabId);
+  loadUrlInTab(tabId, url);
+}
+
+function switchTab(tabId) {
+  activeTabId = tabId;
+  const tab = tabs.find(t => t.id === tabId);
+  if (!tab) return;
+
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-view").forEach(v => v.classList.remove("active"));
+
+  document.getElementById(`bar-${tabId}`).classList.add("active");
+  document.getElementById(`view-${tabId}`).classList.add("active");
+
+  updateAddressBarUI(tab.url);
+}
+
+function closeTab(tabId, event) {
+  if (event) event.stopPropagation();
+  if (tabs.length === 1) createTab("pine://newtab");
+
+  const index = tabs.findIndex(t => t.id === tabId);
+  if (index > -1) {
+    tabs.splice(index, 1);
+    document.getElementById(`bar-${tabId}`).remove();
+    document.getElementById(`view-${tabId}`).remove();
+    if (activeTabId === tabId) switchTab(tabs[Math.max(0, index - 1)].id);
+  }
+}
+
+function updateAddressBarUI(url) {
+  const addressInput = document.getElementById("address-bar");
+  const protocolBadge = document.getElementById("protocol-badge");
+
+  addressInput.value = url;
+  if (url.startsWith("pine://")) {
+    protocolBadge.innerText = "PINE";
+    protocolBadge.style.background = "var(--accent-color)";
+  } else if (url.startsWith("https://")) {
+    protocolBadge.innerText = "SECURE";
+    protocolBadge.style.background = "#2a9d8f";
+  } else {
+    protocolBadge.innerText = "WEB";
+    protocolBadge.style.background = "#e76f51";
+  }
+}
+
+function loadUrlInTab(tabId, rawInput) {
+  const tab = tabs.find(t => t.id === tabId);
+  if (!tab) return;
+
+  const targetUrl = resolveUrl(rawInput);
+  tab.url = targetUrl;
+  updateAddressBarUI(targetUrl);
+
+  const viewContainer = document.getElementById(`view-${tabId}`);
+  viewContainer.innerHTML = "";
+
+  if (targetUrl.startsWith("pine://")) {
+    renderPineSystemPage(tabId, targetUrl, viewContainer);
+  } else {
+    const iframe = document.createElement("iframe");
+    iframe.src = targetUrl;
+    tab.title = targetUrl.replace("https://", "").replace("http://", "").split("/")[0];
+    document.getElementById(`title-${tabId}`).innerText = tab.title;
+    viewContainer.appendChild(iframe);
+
+    historyItems.unshift({ title: tab.title, url: targetUrl, time: new Date().toLocaleTimeString() });
+    renderHistory();
+  }
+}
+
+function navigateTo(url) {
+  if (activeTabId) loadUrlInTab(activeTabId, url);
+}
+
+function renderPineSystemPage(tabId, url, container) {
+  document.getElementById(`title-${tabId}`).innerText = "New Tab";
+  container.innerHTML = `
+    <div class="pine-page">
+      <div style="text-align: center; margin-top: 40px;">
+        <img src="https://github.com/PineappleOSHQ/pineappleos-web/blob/main/costume1.png?raw=true" style="width: 80px; height: 80px; object-fit: contain;" alt="Pine Logo">
+        <h1 style="margin-top: 15px; font-size: 32px;">Pine Engine</h1>
+        <p style="color: var(--text-muted); margin-top: 6px;">Browse the web and execute search queries smoothly.</p>
+      </div>
+
+      <div class="pine-card" style="margin-top: 40px;">
+        <div class="pine-title">Shortcuts</div>
+        <div class="quick-access-grid">
+          <div class="quick-card" onclick="navigateTo('https://html.duckduckgo.com/html/?q=Google')">
+            <div class="quick-card-icon" style="background:#fff;"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" style="width:24px;height:24px;" alt="Google"></div>
+            <strong>Google</strong>
+          </div>
+          <div class="quick-card" onclick="navigateTo('https://wikipedia.org')">
+            <div class="quick-card-icon" style="background:#666;"><img src="https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64" style="width:24px;height:24px;" alt="Wikipedia"></div>
+            <strong>Wikipedia</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBookmarks() {
+  const list = document.getElementById("bookmarks-list");
+  list.innerHTML = "";
+  bookmarks.forEach(b => {
+    const item = document.createElement("div");
+    item.className = "sidebar-item";
+    item.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${b.title}</span> <a href="#" style="color:var(--accent-color);" onclick="navigateTo('${b.url}')">Go</a>`;
+    list.appendChild(item);
+  });
+}
+
+function renderHistory() {
+  const list = document.getElementById("history-list");
+  list.innerHTML = "";
+  historyItems.slice(0, 15).forEach(h => {
+    const item = document.createElement("div");
+    item.className = "sidebar-item";
+    item.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${h.title}</span> <small>${h.time}</small>`;
+    list.appendChild(item);
+  });
+}
+
+// Controls & Shortcuts Initialization
+document.getElementById("add-tab-btn").onclick = () => createTab();
+document.getElementById("home-btn").onclick = () => navigateTo("pine://newtab");
+document.getElementById("reload-btn").onclick = () => {
+  if (activeTabId) loadUrlInTab(activeTabId, tabs.find(t => t.id === activeTabId).url);
+};
+
+document.getElementById("address-bar").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") navigateTo(e.target.value);
+});
+
+document.getElementById("sidebar-toggle-btn").onclick = () => {
+  document.getElementById("sidebar-drawer").classList.toggle("open");
+};
+
+document.getElementById("theme-toggle-btn").onclick = () => {
+  const currentTheme = document.body.getAttribute("data-theme");
+  const svgPath = document.querySelector("#theme-svg-icon path");
+  if (currentTheme === "light") {
+    document.body.removeAttribute("data-theme");
+    svgPath.setAttribute("d", "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z");
+  } else {
+    document.body.setAttribute("data-theme", "light");
+    svgPath.setAttribute("d", "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1z");
+  }
+};
+
+document.getElementById("bookmark-star").onclick = () => {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab && !tab.url.startsWith("pine://")) {
+    bookmarks.push({ title: tab.title, url: tab.url });
+    renderBookmarks();
+  }
+};
+
+window.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key === "t") { e.preventDefault(); createTab(); }
+  if (e.ctrlKey && e.key === "w") { e.preventDefault(); if (activeTabId) closeTab(activeTabId); }
+  if (e.ctrlKey && e.key === "l") { e.preventDefault(); document.getElementById("address-bar").focus(); }
+});
+
+// Initial tab launch
+createTab("pine://newtab");
+</script>
+
+</body>
+</html>
